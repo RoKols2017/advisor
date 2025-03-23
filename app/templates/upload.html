@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Импорт данных</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Bootstrap CDN -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+  <div class="container mt-5">
+    <h1 class="mb-4">📥 Импорт данных</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, msg in messages %}
+          <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+            {{ msg }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <form method="POST" enctype="multipart/form-data" class="p-4 border bg-white shadow-sm rounded">
+      <div class="mb-3">
+        <label class="form-label">Тип данных:</label>
+        <select name="type" class="form-select">
+          <option value="users">Пользователи (CSV)</option>
+          <option value="events">События печати (JSON)</option>
+        </select>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Выберите файл:</label>
+        <input type="file" name="file" class="form-control">
+      </div>
+
+      <button type="submit" class="btn btn-primary">Загрузить</button>
+    </form>
+  </div>
+
+  <!-- Bootstrap JS (для закрытия алертов) -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
