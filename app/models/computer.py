@@ -9,11 +9,11 @@ class Computer(db.Model):
     hostname = db.Column(db.String(255), unique=True, nullable=False, index=True)
     full_name = db.Column(db.String(255), nullable=True, index=True)
 
-    building_id = db.Column(db.Integer, db.ForeignKey("buildings.id"), nullable=False)
-    department_id = db.Column(db.Integer, db.ForeignKey("departments.id"), nullable=False)
-    room_number = db.Column(db.String(50), nullable=False)
-    number_in_room = db.Column(db.Integer, nullable=False)
-
+    building_id = db.Column(db.Integer, db.ForeignKey("buildings.id"), nullable=True)
+    department_id = db.Column(db.Integer, db.ForeignKey("departments.id"), nullable=True)
+    room_number = db.Column(db.String(20), nullable=True)
+    number_in_room = db.Column(db.Integer, nullable=True)
+    
     created_at = db.Column(db.DateTime(timezone=True), server_default=func.now())
 
     building = relationship("Building")

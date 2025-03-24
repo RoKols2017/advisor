@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Панель управления</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+  <h1>📊 Панель управления</h1>
+  <ul>
+    <li><a href="{{ url_for('main.users') }}">👤 Пользователи</a></li>
+    <li><a href="{{ url_for('main.print_events') }}">🖨️ События печати</a></li>
+    <li><a href="{{ url_for('main.print_tree') }}">🖨️ Дерево событий печати</a></li>
+    <li><a href="{{ url_for('uploader.upload') }}">📥 Импорт данных</a></li>
+  </ul>
+</body>
+</html>
