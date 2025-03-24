@@ -56,33 +56,51 @@ def print_events():
 @main_blueprint.route("/print-tree")
 def print_tree():
     from sqlalchemy import func
-    from app.models import PrintEvent, Department, Printer, User
+    from app.models import PrintEvent, Department, Printer, PrinterModel, User
+    from datetime import datetime
 
-    # 🔎 Собираем структуру: dept -> printer -> user
+    start_date_str = request.args.get("start_date", "").strip()
+    end_date_str = request.args.get("end_date", "").strip()
+
+    query = db.session.query(
+        Department.code.label("dept_code"),
+        Department.name.label("dept_name"),
+        Printer.id.label("printer_id"),
+        Printer.room_number,
+        Printer.printer_index,
+        PrinterModel.code.label("model_code"),
+        User.fio.label("user_fio"),
+        func.sum(PrintEvent.pages).label("page_sum")
+    ).join(Printer, Printer.id == PrintEvent.printer_id) \
+     .join(PrinterModel, PrinterModel.id == Printer.model_id) \
+     .join(Department, Department.id == Printer.department_id) \
+     .join(User, User.id == PrintEvent.user_id)
+
+    # 📅 фильтр по дате
+    if start_date_str:
+        try:
+            start_dt = datetime.strptime(start_date_str, "%Y-%m-%d")
+            query = query.filter(PrintEvent.timestamp >= start_dt)
+        except ValueError:
+            pass  # игнорируем неверную дату
+
+    if end_date_str:
+        try:
+            end_dt = datetime.strptime(end_date_str, "%Y-%m-%d")
+            end_dt = end_dt.replace(hour=23, minute=59, second=59)
+            query = query.filter(PrintEvent.timestamp <= end_dt)
+        except ValueError:
+            pass
+
+    query = query.group_by(Department.id, Printer.id, User.id, PrinterModel.code)
+
+    data = query.all()
+
     tree = {}
     total_pages = 0
 
-    events = (
-        db.session.query(
-            Department.code.label("dept_code"),
-            Department.name.label("dept_name"),
-            Printer.id.label("printer_id"),
-            Printer.room_number,
-            Printer.printer_index,
-            PrinterModel.code.label("model_code"),
-            User.fio.label("user_fio"),
-            func.sum(PrintEvent.pages).label("page_sum")
-        )
-        .join(Printer, Printer.id == PrintEvent.printer_id)
-        .join(PrinterModel, PrinterModel.id == Printer.model_id)
-        .join(Department, Department.id == Printer.department_id)
-        .join(User, User.id == PrintEvent.user_id)
-        .group_by(Department.id, Printer.id, User.id, PrinterModel.code)
-        .all()
-    )
-
-    # ⚙️ Формируем дерево
-    for row in events:
+    # Строим дерево
+    for row in data:
         dept_key = f"{row.dept_code} — {row.dept_name}"
         printer_key = f"{row.model_code}-{row.room_number}-{row.printer_index}"
 
@@ -98,11 +116,13 @@ def print_tree():
                 "users": {}
             }
 
-        # ⬇ user
         tree[dept_key]["printers"][printer_key]["users"][row.user_fio] = row.page_sum
-        # ⬆ accum
         tree[dept_key]["printers"][printer_key]["total"] += row.page_sum
         tree[dept_key]["total"] += row.page_sum
         total_pages += row.page_sum
 
-    return render_template("print_tree.html", tree=tree, total_pages=total_pages)
+    return render_template("print_tree.html",
+                           tree=tree,
+                           total_pages=total_pages,
+                           start_date=start_date_str,
+                           end_date=end_date_str)
