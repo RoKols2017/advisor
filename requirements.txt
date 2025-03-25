@@ -1,3 +1,4 @@
 flasgger~=0.9.7.1
 Flask~=3.1.0
 SQLAlchemy~=2.0.39
+XlsxWriter~=3.2.2

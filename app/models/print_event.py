@@ -12,7 +12,7 @@ class PrintEvent(db.Model):
     document_name = db.Column(db.String(512), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
     printer_id = db.Column(db.Integer, db.ForeignKey("printers.id"), nullable=False, index=True)
-    job_id = db.Column(db.String(50), nullable=False, index=True)
+    job_id = db.Column(db.String(64), nullable=False, index=True)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
     byte_size = db.Column(db.Integer, nullable=False)
     pages = db.Column(db.Integer, nullable=False)

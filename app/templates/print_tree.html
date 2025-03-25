@@ -11,6 +11,10 @@
 </head>
 <body class="container mt-4">
   <h1>🌲 Структура печати по подразделениям</h1>
+  <a href="{{ url_for('main.export_tree_excel', start_date=start_date, end_date=end_date) }}"
+     class="btn btn-success mb-3">
+     📥 Выгрузить в Excel
+  </a>
     <form method="GET" class="row g-3 mb-4">
       <div class="col-md-3">
         <label>📅 С</label>
@@ -47,8 +51,13 @@
                         ({{ '%.1f' % ((user_data.total / printer_data.total) * 100) }}%)
                       </span>
                       <ul style="display: none;">
-                        {% for doc, pages in user_data.docs.items() %}
-                          <li>📄 {{ doc }} — {{ pages }} стр.</li>
+                        {% for doc, entries in user_data.docs.items() %}
+                          {% for entry in entries %}
+                            <li>
+                              📄 {{ doc }} — {{ entry.pages }} стр. —
+                              {{ entry.timestamp.strftime('%d.%m.%Y %H:%M') }}
+                            </li>
+                          {% endfor %}
                         {% endfor %}
                       </ul>
                     </li>
