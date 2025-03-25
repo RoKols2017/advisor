@@ -40,10 +40,17 @@
               <li>
                 <span class="toggle text-success">🖨️ {{ printer }} — {{ printer_data.total }} стр.</span>
                 <ul style="display: none;">
-                  {% for user, pages in printer_data.users.items() %}
+                  {% for user, user_data in printer_data.users.items() %}
                     <li>
-                        👤 {{ user }} — {{ pages }} стр.
-                        ({{ '%.1f' % ((pages / printer_data.total) * 100) }}%)
+                      <span class="toggle text-dark">
+                        👤 {{ user }} — {{ user_data.total }} стр.
+                        ({{ '%.1f' % ((user_data.total / printer_data.total) * 100) }}%)
+                      </span>
+                      <ul style="display: none;">
+                        {% for doc, pages in user_data.docs.items() %}
+                          <li>📄 {{ doc }} — {{ pages }} стр.</li>
+                        {% endfor %}
+                      </ul>
                     </li>
                   {% endfor %}
                 </ul>

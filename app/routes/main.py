@@ -70,20 +70,20 @@ def print_tree():
         Printer.printer_index,
         PrinterModel.code.label("model_code"),
         User.fio.label("user_fio"),
+        PrintEvent.document_name,
         func.sum(PrintEvent.pages).label("page_sum")
     ).join(Printer, Printer.id == PrintEvent.printer_id) \
-     .join(PrinterModel, PrinterModel.id == Printer.model_id) \
-     .join(Department, Department.id == Printer.department_id) \
-     .join(User, User.id == PrintEvent.user_id)
+        .join(PrinterModel, PrinterModel.id == Printer.model_id) \
+        .join(Department, Department.id == Printer.department_id) \
+        .join(User, User.id == PrintEvent.user_id)
 
-    # 📅 фильтр по дате
+    # Фильтр по дате
     if start_date_str:
         try:
             start_dt = datetime.strptime(start_date_str, "%Y-%m-%d")
             query = query.filter(PrintEvent.timestamp >= start_dt)
         except ValueError:
-            pass  # игнорируем неверную дату
-
+            pass
     if end_date_str:
         try:
             end_dt = datetime.strptime(end_date_str, "%Y-%m-%d")
@@ -92,34 +92,39 @@ def print_tree():
         except ValueError:
             pass
 
-    query = query.group_by(Department.id, Printer.id, User.id, PrinterModel.code)
+    # Группировка до документа
+    query = query.group_by(Department.id, Printer.id, User.id, PrintEvent.document_name, PrinterModel.code)
 
-    data = query.all()
+    rows = query.all()
 
     tree = {}
     total_pages = 0
 
     # Строим дерево
-    for row in data:
+    tree = {}
+    total_pages = 0
+
+    for row in rows:
         dept_key = f"{row.dept_code} — {row.dept_name}"
         printer_key = f"{row.model_code}-{row.room_number}-{row.printer_index}"
+        user_key = row.user_fio
+        doc_name = row.document_name
 
-        if dept_key not in tree:
-            tree[dept_key] = {
-                "total": 0,
-                "printers": {}
-            }
+        tree.setdefault(dept_key, {"total": 0, "printers": {}})
+        dept = tree[dept_key]
 
-        if printer_key not in tree[dept_key]["printers"]:
-            tree[dept_key]["printers"][printer_key] = {
-                "total": 0,
-                "users": {}
-            }
-
-        tree[dept_key]["printers"][printer_key]["users"][row.user_fio] = row.page_sum
-        tree[dept_key]["printers"][printer_key]["total"] += row.page_sum
-        tree[dept_key]["total"] += row.page_sum
+        dept["total"] += row.page_sum
         total_pages += row.page_sum
+
+        dept["printers"].setdefault(printer_key, {"total": 0, "users": {}})
+        printer = dept["printers"][printer_key]
+        printer["total"] += row.page_sum
+
+        printer["users"].setdefault(user_key, {"total": 0, "docs": {}})
+        user = printer["users"][user_key]
+        user["total"] += row.page_sum
+
+        user["docs"][doc_name] = row.page_sum
 
     return render_template("print_tree.html",
                            tree=tree,
