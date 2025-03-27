@@ -7,6 +7,12 @@
   <style>
     .tree ul { list-style-type: none; margin-left: 20px; }
     .toggle { cursor: pointer; user-select: none; }
+    pre {
+      margin: 0;
+      font-family: monospace;
+      white-space: pre;
+      display: inline;
+    }
   </style>
 </head>
 <body class="container mt-4">
@@ -15,47 +21,47 @@
      class="btn btn-success mb-3">
      📥 Выгрузить в Excel
   </a>
-    <form method="GET" class="row g-3 mb-4">
-      <div class="col-md-3">
-        <label>📅 С</label>
-        <input type="date" name="start_date" class="form-control" value="{{ start_date }}">
-      </div>
-      <div class="col-md-3">
-        <label>📅 По</label>
-        <input type="date" name="end_date" class="form-control" value="{{ end_date }}">
-      </div>
-      <div class="col-md-3 d-flex align-items-end">
-        <button type="submit" class="btn btn-primary">🔍 Фильтровать</button>
-        <a href="{{ url_for('main.print_tree') }}" class="btn btn-secondary ms-2">Сброс</a>
-      </div>
-    </form>
+  <form method="GET" class="row g-3 mb-4">
+    <div class="col-md-3">
+      <label>📅 С</label>
+      <input type="date" name="start_date" class="form-control" value="{{ start_date }}">
+    </div>
+    <div class="col-md-3">
+      <label>📅 По</label>
+      <input type="date" name="end_date" class="form-control" value="{{ end_date }}">
+    </div>
+    <div class="col-md-3 d-flex align-items-end">
+      <button type="submit" class="btn btn-primary">🔍 Фильтровать</button>
+      <a href="{{ url_for('main.print_tree') }}" class="btn btn-secondary ms-2">Сброс</a>
+    </div>
+  </form>
+
   <p><strong>🧮 Всего страниц по организации:</strong> {{ total_pages }}</p>
 
   <div class="tree">
     <ul>
       {% for dept, dept_data in tree.items() %}
         <li>
-          <span class="toggle fw-bold text-primary">
-            📁 {{ dept }} — {{ dept_data.total }} стр.
-            ({{ '%.1f' % ((dept_data.total / total_pages) * 100) }}%)
+          <span class="toggle text-primary fw-bold">
+            <pre>📁 {{ dept }} — {{ "%5d" % dept_data.total }} стр. ({{ "%5.1f" % ((dept_data.total / total_pages) * 100) }}%)</pre>
           </span>
           <ul style="display: none;">
             {% for printer, printer_data in dept_data.printers.items() %}
               <li>
-                <span class="toggle text-success">🖨️ {{ printer }} — {{ printer_data.total }} стр.</span>
+                <span class="toggle text-success">
+                  <pre>🖨️ {{ printer }} — {{ "%5d" % printer_data.total }} стр.</pre>
+                </span>
                 <ul style="display: none;">
                   {% for user, user_data in printer_data.users.items() %}
                     <li>
                       <span class="toggle text-dark">
-                        👤 {{ user }} — {{ user_data.total }} стр.
-                        ({{ '%.1f' % ((user_data.total / printer_data.total) * 100) }}%)
+                        <pre>👤 {{ user }} — {{ "%5d" % user_data.total }} стр. ({{ "%5.1f" % ((user_data.total / printer_data.total) * 100) }}%)</pre>
                       </span>
                       <ul style="display: none;">
                         {% for doc, entries in user_data.docs.items() %}
                           {% for entry in entries %}
                             <li>
-                              📄 {{ doc }} — {{ entry.pages }} стр. —
-                              {{ entry.timestamp.strftime('%d.%m.%Y %H:%M') }}
+                              <pre>📄 {{ doc }} — {{ "%5d" % entry.pages }} стр. — {{ entry.timestamp.strftime('%d.%m.%Y %H:%M') }}</pre>
                             </li>
                           {% endfor %}
                         {% endfor %}

@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from flask import Blueprint, render_template, request, send_file
 import io
 import xlsxwriter
@@ -80,7 +81,6 @@ def print_tree():
         .join(Department, Department.id == Printer.department_id) \
         .join(User, User.id == PrintEvent.user_id)
 
-    # Фильтр по дате
     if start_date_str:
         try:
             start_dt = datetime.strptime(start_date_str, "%Y-%m-%d")
@@ -95,36 +95,48 @@ def print_tree():
         except ValueError:
             pass
 
-    # Группировка до документа
-    query = query.group_by(Department.id, Printer.id, User.id, PrintEvent.document_name, PrinterModel.code)
+    query = query.group_by(
+        Department.id, Printer.id, User.id,
+        PrintEvent.document_name, PrinterModel.code
+    )
 
     rows = query.all()
 
-    tree = {}
     total_pages = 0
+    max_lengths = {
+        "dept": 0,
+        "printer": 0,
+        "user": 0,
+        "doc": 0
+    }
 
-    # Строим дерево
-    tree = {}
-    total_pages = 0
+    # ➕ Первый проход: собрать данные + длины
+    temp_tree = {}
 
     for row in rows:
-        dept_key = f"{row.dept_code} — {row.dept_name}"
-        printer_key = f"{row.model_code}-{row.room_number}-{row.printer_index}"
-        user_key = row.user_fio
+        dept_name = f"{row.dept_code} — {row.dept_name}"
+        printer_name = f"{row.model_code}-{row.room_number}-{row.printer_index}"
+        user_name = row.user_fio
         doc_name = row.document_name
 
-        tree.setdefault(dept_key, {"total": 0, "printers": {}})
-        dept = tree[dept_key]
+        # обновить длины
+        max_lengths["dept"] = max(max_lengths["dept"], len(dept_name))
+        max_lengths["printer"] = max(max_lengths["printer"], len(printer_name))
+        max_lengths["user"] = max(max_lengths["user"], len(user_name))
+        max_lengths["doc"] = max(max_lengths["doc"], len(doc_name))
 
-        dept["total"] += row.page_sum
         total_pages += row.page_sum
 
-        dept["printers"].setdefault(printer_key, {"total": 0, "users": {}})
-        printer = dept["printers"][printer_key]
+        temp_tree.setdefault(dept_name, {"total": 0, "printers": {}})
+        dept = temp_tree[dept_name]
+        dept["total"] += row.page_sum
+
+        dept["printers"].setdefault(printer_name, {"total": 0, "users": {}})
+        printer = dept["printers"][printer_name]
         printer["total"] += row.page_sum
 
-        printer["users"].setdefault(user_key, {"total": 0, "docs": {}})
-        user = printer["users"][user_key]
+        printer["users"].setdefault(user_name, {"total": 0, "docs": {}})
+        user = printer["users"][user_name]
         user["total"] += row.page_sum
 
         user["docs"].setdefault(doc_name, []).append({
@@ -132,11 +144,58 @@ def print_tree():
             "timestamp": row.timestamp
         })
 
+    def pad(s, key):
+        return s.ljust(max_lengths[key])
+
+    for dept in temp_tree.values():
+        for printer in dept["printers"].values():
+            for user in printer["users"].values():
+                # считаем total страниц на каждый документ
+                doc_totals = {
+                    doc: sum(entry["pages"] for entry in entries)
+                    for doc, entries in user["docs"].items()
+                }
+
+                # сортируем документы по total pages (убывание)
+                sorted_docs = OrderedDict(
+                    sorted(user["docs"].items(), key=lambda x: doc_totals[x[0]], reverse=True)
+                )
+
+                # выравниваем названия документов
+                padded_docs = OrderedDict()
+                for doc, entries in sorted_docs.items():
+                    MAX_DOC_WIDTH = 80
+                    if len(doc) > MAX_DOC_WIDTH:
+                        padded_name = doc[:MAX_DOC_WIDTH - 1] + "…"  # без .ljust!
+                    else:
+                        padded_name = doc.ljust(MAX_DOC_WIDTH)
+                    padded_docs[padded_name] = entries
+
+                user["docs"] = padded_docs
+    # 🔁 Второй проход: выравнивание + сортировка
+    tree = {
+        pad(dept, "dept"): {
+            "total": d["total"],
+            "printers": {
+                pad(printer, "printer"): {
+                    "total": p["total"],
+                    "users": {
+                        pad(user, "user"): u
+                        for user, u in sorted(p["users"].items(), key=lambda x: x[1]["total"], reverse=True)
+                    }
+                }
+                for printer, p in sorted(d["printers"].items(), key=lambda x: x[1]["total"], reverse=True)
+            }
+        }
+        for dept, d in sorted(temp_tree.items(), key=lambda x: x[1]["total"], reverse=True)
+    }
+
     return render_template("print_tree.html",
                            tree=tree,
                            total_pages=total_pages,
                            start_date=start_date_str,
                            end_date=end_date_str)
+
 
 @main_blueprint.route("/print-tree/export")
 def export_tree_excel():
