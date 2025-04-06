@@ -16,6 +16,7 @@
   </style>
 </head>
 <body class="container mt-4">
+  <a href="{{ url_for('main.index') }}" class="btn btn-secondary mt-4">🔙 Назад</a>
   <h1>🌲 Структура печати по подразделениям</h1>
   <a href="{{ url_for('main.export_tree_excel', start_date=start_date, end_date=end_date) }}"
      class="btn btn-success mb-3">
@@ -36,7 +37,18 @@
     </div>
   </form>
 
-  <p><strong>🧮 Всего страниц по организации:</strong> {{ total_pages }}</p>
+  <p>
+   <strong>🧮 Всего страниц по организации:</strong> {{ total_pages }}
+   {% if start_date or end_date %}
+     <br>
+     <small class="text-muted">
+       Период:
+       {% if start_date %}с {{ start_date }}{% endif %}
+       {% if start_date and end_date %} по {% endif %}
+       {% if end_date %}{{ end_date }}{% endif %}
+     </small>
+   {% endif %}
+  </p>
 
   <div class="tree">
     <ul>
@@ -88,6 +100,5 @@
     });
   </script>
 
-  <a href="{{ url_for('main.index') }}" class="btn btn-secondary mt-4">🔙 Назад</a>
 </body>
 </html>

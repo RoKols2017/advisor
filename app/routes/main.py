@@ -26,27 +26,36 @@ def users():
 
 @main_blueprint.route("/print-events")
 def print_events():
+    from sqlalchemy import func
     dept_code = request.args.get("dept", "").strip().lower()
     start_date_str = request.args.get("start_date", "").strip()
     end_date_str = request.args.get("end_date", "").strip()
 
-    query = PrintEvent.query.join(User).join(Printer).join(Department)
+    base_query = PrintEvent.query.join(User).join(Printer).join(Department)
 
-    # 🔽 Фильтр по подразделению
     if dept_code:
-        query = query.filter(Printer.department.has(Department.code.ilike(f"%{dept_code}%")))
+        base_query = base_query.filter(Printer.department.has(Department.code.ilike(f"%{dept_code}%")))
 
-    # 📅 Фильтр по дате
     if start_date_str:
-        start_dt = datetime.strptime(start_date_str, "%Y-%m-%d")
-        query = query.filter(PrintEvent.timestamp >= start_dt)
-    if end_date_str:
-        end_dt = datetime.strptime(end_date_str, "%Y-%m-%d")
-        end_dt = end_dt.replace(hour=23, minute=59, second=59)
-        query = query.filter(PrintEvent.timestamp <= end_dt)
+        try:
+            start_dt = datetime.strptime(start_date_str, "%Y-%m-%d")
+            base_query = base_query.filter(PrintEvent.timestamp >= start_dt)
+        except ValueError:
+            pass
 
-    events = query.order_by(PrintEvent.timestamp.desc()).limit(500).all()
-    total_pages = sum(event.pages for event in events if event.pages)
+    if end_date_str:
+        try:
+            end_dt = datetime.strptime(end_date_str, "%Y-%m-%d")
+            end_dt = end_dt.replace(hour=23, minute=59, second=59)
+            base_query = base_query.filter(PrintEvent.timestamp <= end_dt)
+        except ValueError:
+            pass
+
+    # 🔁 Сначала считаем общее число страниц без LIMIT
+    total_pages = base_query.with_entities(func.sum(PrintEvent.pages)).scalar() or 0
+
+    # 🧾 Только потом получаем события (ограниченные)
+    events = base_query.order_by(PrintEvent.timestamp.desc()).limit(500).all()
 
     all_departments = Department.query.order_by(Department.code).all()
 
@@ -54,7 +63,10 @@ def print_events():
                            events=events,
                            total_pages=total_pages,
                            departments=all_departments,
-                           selected_dept=dept_code)
+                           selected_dept=dept_code,
+                           start_date=start_date_str,
+                           end_date=end_date_str)
+
 
 @main_blueprint.route("/print-tree")
 def print_tree():
@@ -75,7 +87,7 @@ def print_tree():
         User.fio.label("user_fio"),
         PrintEvent.document_name,
         func.sum(PrintEvent.pages).label("page_sum"),
-        PrintEvent.timestamp
+        func.max(PrintEvent.timestamp).label("last_time")
     ).join(Printer, Printer.id == PrintEvent.printer_id) \
         .join(PrinterModel, PrinterModel.id == Printer.model_id) \
         .join(Department, Department.id == Printer.department_id) \
@@ -141,7 +153,7 @@ def print_tree():
 
         user["docs"].setdefault(doc_name, []).append({
             "pages": row.page_sum,
-            "timestamp": row.timestamp
+            "timestamp": row.last_time
         })
 
     def pad(s, key):

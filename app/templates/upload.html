@@ -10,6 +10,9 @@
 <body class="bg-light">
 
   <div class="container mt-5">
+
+  <a href="{{ url_for('main.index') }}" class="btn btn-secondary">🔙 Назад</a>
+
     <h1 class="mb-4">📥 Импорт данных</h1>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
